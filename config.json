@@ -1,0 +1,9 @@
+{
+    "model_name": "Japanese",
+    "word_field": "Vocab",
+    "sentence_field": "Expression",
+    "source_field": "Meta",
+    "deck_name": "!優先::1 自分::kindle",
+    "last_added": null,
+    "path": "F:/"
+}
