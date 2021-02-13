@@ -11,14 +11,20 @@ from aqt import mw
 from aqt.utils import getFile, showInfo, showText
 from aqt.qt import QAction
 from anki.utils import ids2str
+from kindleImporter.splitter import deconjugate, Splitter, Words
 
 
 locale.setlocale(locale.LC_ALL, 'ja_JP')
 
 CONFIG = mw.addonManager.getConfig(__name__)
 
+BLACKLIST = ['‐', '・', '△', '×']
+
 Clipping = namedtuple('Clipping', ('kind', 'document', 'page', 'location', 'added', 'content'))
 Vocab = namedtuple('Vocab', ('stem', 'word', 'usage', 'timestamp', 'title', 'authors'))
+
+VALID_WORDS = None
+
 
 
 def getDeck(vocab):
@@ -113,11 +119,18 @@ def getVocabLookups():
     return vocabs
 
 def getVocab(clipping, vocabs):
+    
+    sameSentence = 0 # This is a lazy hack to get sentences w/ multiple lookups
     for index, vocab in enumerate(vocabs):
         # TODO Oof need actual deconjugation for Japanaese
         # if you looked up other words in the same sentence you might get a false vocab entry
-        if clipping.content[0] == vocab.stem[0] and clipping.content in vocab.usage:
-            return vocab, vocabs[index:]
+        try:
+            if vocabs[index - 1].usage == vocab.usage:
+                sameSentence += 1
+        except IndexError:
+            pass
+        if clipping.content in vocab.usage:
+            return vocab, vocabs[index-sameSentence:]
 
     # Double check for loose matches (where word doesn't match highlight eg ころころｖｓコロコロ)
     for index, vocab in enumerate(vocabs):
@@ -126,18 +139,30 @@ def getVocab(clipping, vocabs):
     return None, vocabs
 
 
+def setupCache():
+    global VALID_WORDS
+    VALID_WORDS = Words()
+    return VALID_WORDS
+
+
+def removeCache(cache):
+    del cache
+
 
 def import_highlights():
     model = mw.col.models.byName(CONFIG['model_name'])
     # last_added = None
     # did = getDeck()
     highlight_clippings, clippings_to_add, bad_clippings, clippings = getClippings()
-    
+    cache = setupCache()
     timestamp = None
     no_vocab = []
     vocabs = getVocabLookups()
     clippings_to_add.reverse()
-    for clipping in clippings_to_add:
+    mw.progress.start(label='Parsing Highlights...\n ', max=len(clippings_to_add), min=1, immediate=True)
+    for i, clipping in enumerate(clippings_to_add):
+        mw.progress.update(label=f'Parsing Highlights...\n {clipping.content}', value=i+1)
+
         note = Note(mw.col, model)
         
         vocab, vocabs = getVocab(clipping, vocabs)
@@ -160,6 +185,8 @@ def import_highlights():
 
         # if clipping.added:
         #     last_added = clipping.added
+    mw.progress.finish()
+
     if no_vocab :
         showText(
             f'The following {len(no_vocab)} clippings could not be matched automatically:\n\n' +
@@ -168,6 +195,8 @@ def import_highlights():
     if clippings_to_add:
         setLastAdded(clippings_to_add[0].added)
     displayResults(highlight_clippings, clippings_to_add, bad_clippings, clippings, no_vocab)
+    
+    removeCache(cache)
 
 
 
@@ -237,12 +266,52 @@ def last_added_datetime():
     return datetime.strptime(last_added_config, '%Y-%m-%dT%H:%M:%S') if last_added_config else None
 
 
-# IDK what else this could be. OR if if it's necessary
+# It could be bookmarks too - which would break
 def highlights_only(clippings):
     for clipping in clippings:
         if 'ハイライト' in clipping.kind.lower():
             yield clipping
 
+def deinflectVocab(vocab):
+
+
+    
+    if VALID_WORDS.contains(vocab):
+        return vocab
+
+    # Use basic deconjugation rules to guess a word
+    deconjugations = deconjugate(vocab)
+    for dc in deconjugations:
+        if VALID_WORDS.contains(dc):
+            return dc
+    
+    # Resort to mecab breaking things into individual words
+    try:
+        splitter = Splitter()
+        wordItems = splitter.analyze(vocab)
+        # print(wordItems)
+        for splitWord in wordItems[1::2]:
+            # print(splitWord, VALID_WORDS.contains(splitWord))
+            if VALID_WORDS.contains(splitWord):
+                return splitWord
+    except Exception as e:
+        pass
+        raise Exception("Can't do sentence scan: check Japanese Support is installed and working properly")
+
+
+
+    return vocab
+
+def removeExtraChars(v):
+    regex = u'([\u4E00-\u9FFF]|[\u3040-\u309Fー]|[\u30A0-\u30FF])+'
+    match = re.search(regex, v, re.U)
+    return match[0]
+
+def cleanVocab(v):
+    # cleaned = "".join(c for c in v if c not in BLACKLIST)
+    cleaned = removeExtraChars(v)
+    deinflected = deinflectVocab(cleaned)
+    return deinflected
 
 def fields(clipping, model, vocab):
     content_yielded = False
@@ -257,11 +326,11 @@ def fields(clipping, model, vocab):
             yield '{page}{added}{word}'.format(
                 page='ページ' + clipping.page if clipping.page is not None else '',
                 added=' ' + clipping.added if clipping.added is not None else '',
-                word=' ' + vocab.word
+                word=' ' + clipping.content
             )
             source_yielded = True
         elif field == CONFIG['word_field']:
-            yield vocab.stem
+            yield cleanVocab(clipping.content)
             word_yielded = True
         else:
             yield ''
@@ -269,3 +338,39 @@ def fields(clipping, model, vocab):
     if not (content_yielded and source_yielded and word_yielded):
         raise ValueError('Could not find content and/or source fields in model.')
 
+
+# import kindleImporter
+# from importlib import reload
+# reload(kindleImporter)
+# reload(kindleImporter.splitter)
+# from kindleImporter.splitter import deconjugate, Splitter, Words
+
+# print(deconjugate('食べて窮する'))
+# print(Splitter().analyze('食べて窮する'))
+# d = Words()
+# print(d._dic['窮する'])
+# print(d.contains('窮し'))
+def test():
+    vocab = cleanVocab('雲散霧消')
+    # print(vocab)
+    assert vocab == '雲散霧消'
+
+    vocab = cleanVocab('ばけた')
+    assert vocab == 'ばける'
+
+    # ideally we could do get 身代わり
+    vocab = cleanVocab('身がわり')
+    assert vocab == '身'
+    
+    vocab = cleanVocab('ひとえに')
+    assert vocab == 'ひとえに'
+
+    # Currently bad mecab parsing
+    vocab = cleanVocab('窮して、')
+    assert vocab == '窮す'
+
+    vocab = cleanVocab('「歯がうく、何')
+    assert vocab == '歯がうく'
+
+    vocab = cleanVocab('コロコロ')
+    assert vocab == 'コロコロ'
