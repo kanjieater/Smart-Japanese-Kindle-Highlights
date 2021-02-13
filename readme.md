@@ -26,6 +26,7 @@ Every time you run it, it records when you last generated cards, and continues f
   
 # Instructions
 
+0. Make sure Vocab Builder is on, on your Kindle device (inside Settings -> Reading Options)
 1. Make sure your Kindle highlights are in `KindlePath/documents/My Clippings.txt`, where KindlePath is something like `F:` or whatever your Kindle's drive is: `F:/documents/My Clippings.txt`
 2. I recommend erasing the contents of `My Clippings.txt` for the first time you use this, just to make sure you don't have any words or sentences that could mess up the matching.
 3. Set up the add-on config variables:
