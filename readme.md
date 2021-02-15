@@ -1,12 +1,14 @@
-# Smart Japanese Kindle Highlights
-
 This add-on makes Anki cards from words you've highlighted. By highlighting only the word you read on your kindle, this add-on can generate a card containing:
 
 1. The deconjugated word you read
 2. The sentence the highlighted word was used in
 3. The meta data of when and where this word was read
 
-# How does it work?
+Here's a video covering the features &amp; setup:
+<a href="https://www.youtube.com/watch?v=xPYN5GewQE4" rel="nofollow"><img src="https://i.imgur.com/IxMAJQU.png"></a>
+
+
+<b> How does it work? </b>
 
 It works by looking up the highlighted text in the Kindle's built in Vocab Builder feature which automatically records sentences of words you looked up. 
 
@@ -14,22 +16,22 @@ It then matches the words to sentence usages, and pulls the deconjugated word, s
 
 Every time you run it, it records when you last generated cards, and continues from where it left off - making adding new cards from you Kindle practically effortless.
 
-# Current Limitations:
+<b> Current Limitations </b>
 - This only supports kindles in the Japanese language and Japanese books; Each kindle's highlight format is different depending on the language
-- Windows is the only officially supported platform, though Mac & Linux should work; PR's welcome
+- Windows is the only officially supported platform, though Mac &amp; Linux should work; PR's welcome
 - Only supports Kindle's with My Clippings.txt (no html/Android based clippings)
   
-## Kindle Limitations
-- Books must use a Kindle vocab compatible format: .azw3 is compatible; .mobi is not; I used Calibre to easily convert my books that were mobi to azw3 without any issues (covers still work if you delete any Amazon ids)
+<b> Kindle Limitations </b>
+- Books must use a Kindle vocab compatible format: .azw3 is compatible; .mobi is not (though some have gotten it to work); I used Calibre to easily convert my books that were mobi to azw3 without any issues (covers still work if you delete any Amazon ids)
 - Only matches what your Kindle dictionary finds. The Kindle automatically makes `/system/vocabulary/vocab.db` and updates it with words that were found in the dictionary. The entries in this are automatically created by the Kindle itself. If your dictionary couldn't find it, you'll have to make a card manually for the word (the add-on will prompt you in this case).
 
-  
-# Instructions
-
-0. Make sure Vocab Builder is on, on your Kindle device (inside Settings -> Reading Options)
-1. Make sure your Kindle highlights are in `KindlePath/documents/My Clippings.txt`, where KindlePath is something like `F:` or whatever your Kindle's drive is: `F:/documents/My Clippings.txt`
-2. I recommend erasing the contents of `My Clippings.txt` for the first time you use this, just to make sure you don't have any words or sentences that could mess up the matching.
-3. Set up the add-on config variables:
+ 
+<b> Instructions</b>
+1. Make sure Vocab Builder is on, on your Kindle device (inside Settings -&gt; Reading Options) 
+2. Make sure you Kindle is in Japanese
+3. Make sure your Kindle highlights are in `KindlePath/documents/My Clippings.txt`, where KindlePath is something like `F:` or whatever your Kindle's drive is: `F:/documents/My Clippings.txt`
+4. I recommend erasing the contents of `My Clippings.txt` for the first time you use this, just to make sure you don't have any words or sentences that could mess up the matching.
+5. Set up the add-on config variables:
 
 ```
 {
@@ -42,19 +44,36 @@ Every time you run it, it records when you last generated cards, and continues f
     "path": "F:/"
 }
 ```
-4. `model_name` is the model to use for the cards. This model must have fields in it named whatever the word_field, sentence_field, and source_field are.
+6. `model_name` is the model to use for the cards. This model must have fields in it named whatever the word_field, sentence_field, and source_field are.
 
-5. `word_field` is where the deconjugated word will be put in the card
-6. `sentence_field` is where the sentence where the word was used will be put in the card
-7. `source_field` is where the meta data of what page and what time you highlighted the word. It looks something like this: `ページ78 2021年2月3日水曜日 8:50:57 食べて`
-8. `deck_name` is the "root" deck where sub decks will be created. Every highlight imported will be placed in a subdeck named after the book it was read from. So in my case, I have a deck named `!優先`, which is where my Japanese cards are, with a subdeck of `1 自分` where I put cards I make myself, with a sub-deck of `kindle` where are the kindle cards are generated to. Inside `kindle` I have decks like `狼は眠らない`, which is the name of a book I read, and generated cards to automatically.
-9. `last_added` is when the last Kindle Highlight was added. Don't change this unless you want it to rescan & readd cards from that time. If you set it to `null` it will start at the beginning of all of your highlights. 
-10. `path` the root path of your Kindle device. It expects `F:/documents/clippings` and a hidden folder & file `F:/system/vocabulary/vocab.db` to exist.
+7. `word_field` is where the deconjugated word will be put in the card
+8. `sentence_field` is where the sentence where the word was used will be put in the card
+9. `source_field` is where the meta data of what page and what time you highlighted the word. It looks something like this: `ページ78 2021年2月3日水曜日 8:50:57 食べて`
+10. `deck_name` is the "root" deck where sub decks will be created. Every highlight imported will be placed in a subdeck named after the book it was read from. So in my case, I have a deck named `!優先`, which is where my Japanese cards are, with a subdeck of `1 自分` where I put cards I make myself, with a sub-deck of `kindle` where are the kindle cards are generated to. Inside `kindle` I have decks like `狼は眠らない`, which is the name of a book I read, and generated cards to automatically.
+11. `last_added` is when the last Kindle Highlight was added. Don't change this unless you want it to rescan &amp; readd cards from that time. If you set it to `null` it will start at the beginning of all of your highlights. 
+12. `path` the root path of your Kindle device. It expects `F:/documents/clippings` and a hidden folder &amp; file `F:/system/vocabulary/vocab.db` to exist.
 
-# Tips on Usage
+<b> Tips on Usage </b>
 - After hitting 10k sentence cards, I switched all of my cards to Vocab cards. As generated vocab cards, these autogenerated cards work great. As sentence cards, you would want to manually make the sentences as short as possible to provide context. **Shorter sentence cards are better.** Hot Take: Vocab cards are even better if you're actually spending time reading daily. Use Anki for vocab entries, use immersion to get things to actually sink in. Sentence cards take 30% longer to review I've found. 
 
-# Thank You
+<b> Thank You </b>
 - HelenFoster: Your add-ons are some of the best written code, and I frequently use snippets in my own code
-- gmcmanus: Your English kindle highlighting add-on helped inspire this add-on & I was able to re-use a portion of that code
+- gmcmanus: Your English kindle highlighting add-on helped inspire this add-on &amp; I was able to re-use a portion of that code
 
+<b> Update History </b>
+
+- 2/13/2021 - Initial Release!
+
+- 2/14/2021 - Bug fix on importing the add-on. Added a dialog so feedback of the highlight scanning starting is immediate (otherwise if you have hundreds of highlights it might look like it's not working).
+
+<b>Support</b>
+
+If you find my tools useful please consider supporting via Patreon. I have spent countless hours to make these useful for not only myself but other's as well and am now offering them completely 100% free.
+
+<a href="https://www.patreon.com/kanjieater" rel="nofollow"><img src="https://i.imgur.com/VCTLqLj.png"></a>
+
+<strong>Motivate me through <em>PayPal</em></strong>: Please follow the a link below to buy me a <strong>coffee</strong>, <strong>sandwich</strong>, <strong>meal</strong>, or anything else you'd like if you find my work interesting. 
+<a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&amp;hosted_button_id=2ZXU692F6Z7G2" rel="nofollow" title="Buy me a coffee"><img src="https://raw.githubusercontent.com/gajewsk2/logos/master/misc/coffee.png"></a> <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&amp;hosted_button_id=J9HQ42M29ZSYU" rel="nofollow" title="Buy me a sandwich"><img src="https://raw.githubusercontent.com/gajewsk2/logos/master/misc/sandwich.png"></a><a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&amp;hosted_button_id=G9T7ZZ24UQQM4" rel="nofollow" title="Buy me a meal"><img src="https://raw.githubusercontent.com/gajewsk2/logos/master/misc/meal.png"></a> <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&amp;hosted_button_id=BTZ5N5FJN8JJN" rel="nofollow" title="Custom contribution"><img src="https://raw.githubusercontent.com/gajewsk2/logos/master/misc/something-else.png"></a>
+
+If you can't contribute monetarily please consider following on:
+<a href="https://www.youtube.com/channel/UCU1cAd9sJ4HeiBDsjnmifAQ" rel="nofollow"><img src="https://i.imgur.com/t4wo4SHs.png"></a><a href="https://twitter.com/kanjieater" rel="nofollow"><img src="https://i.imgur.com/QvGDFVQs.png"></a><a href="https://www.twitch.tv/kanjieater" rel="nofollow"><img src="https://i.imgur.com/UKeRp24s.png"></a>
