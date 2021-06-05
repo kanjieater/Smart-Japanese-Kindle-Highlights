@@ -8,15 +8,28 @@
 # License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 #
 
-import os, subprocess
+import os, subprocess, json
 from anki.utils import isWin
+from pathlib import Path
 
+"""
+#Generate custom dictionaries from yomichan dicts using this from the anki console
+from importlib import reload
+s = __import__('1353504091.splitter').splitter
+
+reload(s)
+
+w = s.Words()
+w.writeCustomDictionary()
+
+print(w.contains('腰斬'))
+"""
 class Words:
 
     def __init__(self,):
         self._dic = {}  #dic[expression][reading] = WordInfo(...)
         self._dicT = {} #dicT[expression][reading] = 1
-        
+        self.temp_dict = {}
         countWords = 0
         linesMissed = 0
         dFile = os.path.join(os.path.dirname(os.path.realpath(__file__)), "jmdict_freqs.txt")
@@ -35,7 +48,41 @@ class Words:
                     self.add(expression, reading)
                 else:
                     linesMissed += 1
+        
     
+    def writeCustomDictionary(self):
+        dFile = os.path.join(os.path.dirname(os.path.realpath(__file__)), "dicts")
+        for path in Path(dFile).rglob('term_bank_*.json'):
+            print(path)
+            self.readJsonFile(path)
+        self.writeTempDict()
+
+    def writeTempDict(self):
+        with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "dicts", 'newDict.txt'), 'a', encoding="utf8") as outfile:
+            for k, entry in self.temp_dict.items():
+                outfile.write(f"{entry['expression']}\t{entry['reading']}\t\n")
+
+
+    def readJsonFile(self, filepath):
+        with open(filepath, encoding="utf8") as f:
+            data = json.load(f)
+            for entry in data:
+                expression = entry[0]
+                reading = entry[1]
+                if expression == "腰斬":
+                    # print('here')
+                    print(self.contains(expression))
+                if not self.contains(expression):
+                    self.addTotempDict(expression, reading)
+                    self.add(expression, reading)
+                
+    
+    def addTotempDict(self, expression, reading):
+        self.temp_dict[expression+reading] = {
+            "expression": expression,
+            "reading": reading if reading else expression
+        }
+
     def add(self, expression, reading):
         if expression not in self._dic:
             self._dic[expression] = {}
@@ -108,10 +155,17 @@ class Words:
                 wordInfo = dic[expression][reading]
                 yield (expression, reading, wordInfo)
 
+"""
+from importlib import reload
+s = __import__('1353504091.splitter').splitter
+
+reload(s)
+print(s.Splitter().analyze('いじけた'))
+"""
 
 class Splitter:
     def __init__(self):
-        mecabArgs = ['--node-format="%m@%f[6]@"']
+        mecabArgs = []
         try:
             import japanese
         except:
@@ -147,7 +201,9 @@ class Splitter:
         self.mecab.stdin.write(expr.encode("utf-8", "ignore") + b'\n')
         self.mecab.stdin.flush()
         expr = self.mecab.stdout.readline().rstrip(b'\r\n').decode("utf-8", "replace")
-        return expr.split("@")[:-1]
+        word = expr.split("	")[0]
+        deconj = expr.split(",")[6]
+        return word if deconj == '*' else deconj 
 
 def rreplace(s, old, new, occurrence):
     li = s.rsplit(old, occurrence)

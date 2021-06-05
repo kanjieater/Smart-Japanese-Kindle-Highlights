@@ -61,12 +61,15 @@ Every time you run it, it records when you last generated cards, and continues f
 - gmcmanus: Your English kindle highlighting add-on helped inspire this add-on &amp; I was able to re-use a portion of that code
 
 <b> Update History </b>
-
-- 2/13/2021 - Initial Release!
-
-- 2/14/2021 - Bug fix on importing the add-on. Added a dialog so feedback of the highlight scanning starting is immediate (otherwise if you have hundreds of highlights it might look like it's not working).
-
+2/13/2021 - Initial Release!
+2/14/2021 - Bug fix on importing the add-on. Added a dialog so feedback of the highlight scanning starting is immediate (otherwise if you have hundreds of highlights it might look like it's not working).
+2/20/2021 - Better error handling for bad configuration. The add-on will now tell you (instead of throwing an error) when something goes wrong with file paths, Note Types, and missing fields
+2/20/2021 - Updated again to fix issues with parsing for some users
+3/11/2021 - Add-on now ignores buggy highlights that are duplicates (same source and vocab) or if the highlight is blank. The add-on now creates cards in chronological order.
 <b>Support</b>
+
+If you have an issue, join the discord &amp; post in #tech-support:
+<a href="https://discord.com/invite/agbwB4p" rel="nofollow">https://discord.com/invite/agbwB4p</a>
 
 If you find my tools useful please consider supporting via Patreon. I have spent countless hours to make these useful for not only myself but other's as well and am now offering them completely 100% free.
 
