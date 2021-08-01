@@ -44,7 +44,7 @@ def log(logLine):
 def getVocabTimestamp(timestamp):
     return datetime.fromtimestamp(timestamp/1000).strftime('%Y-%m-%d %H:%M:%S')
 
-def vocabDebug(state, vocabs, clipping=None, vocab=None):
+def vocabDebug(state, vocabs, clipping=None, vocab=None, distances=None):
     if not DEBUG:
         return
     
@@ -65,6 +65,9 @@ def vocabDebug(state, vocabs, clipping=None, vocab=None):
                 log([f"{i} Vocab Usage: {v.usage} Timestamp: {getVocabTimestamp(v.timestamp)}\n"])
     elif state == 'notFound':
         log(f'ntFnd slice: {len(vocabs)}, debug_in_vocabs: {debug_in_vocabs}, ClippingTimestamp:{added}, last timestamp: {lastVocabTimestamp}')
+    elif state == "distance":
+        vocabTimestamp = getVocabTimestamp(vocab.timestamp)
+        log(f'dstnc slice: {len(vocabs)}, debug_in_vocabs: {debug_in_vocabs}, ClippingTimestamp:{added}, last timestamp: {lastVocabTimestamp}, VocabTimestamp: {vocabTimestamp}, clipping content: {clipping.content}, title: {clipping.document}, vocab usage: {vocab.usage}, distance: {distances}')
     else:
         log(f'---OG slice: {len(vocabs)}, debug_in_vocabs: {debug_in_vocabs}')
 
@@ -215,7 +218,7 @@ def getVocabLookups():
 def getTimestampDistance(clipping, vocab):
     
     clippingTimestamp = parse_clipping_added(clipping.added).timestamp()
-    return clippingTimestamp - vocab.timestamp/1000
+    return abs(clippingTimestamp - vocab.timestamp/1000)
 
 
 def getVocab(clipping, vocabs):
@@ -224,11 +227,14 @@ def getVocab(clipping, vocabs):
     distances = []
     for index, vocab in enumerate(vocabs):
         if clipping.content in vocab.usage:
+            distance = getTimestampDistance(clipping, vocab)
             possibleUsages.append(vocab)
-            distances.append(getTimestampDistance(clipping, vocab))
+            distances.append(distance)
+            
     if possibleUsages:
         minIndex = distances.index(min(distances))
         foundVocab = possibleUsages[minIndex]
+        vocabDebug("distance", vocabs, clipping, foundVocab, distances)
 
     return foundVocab, vocabs
 
