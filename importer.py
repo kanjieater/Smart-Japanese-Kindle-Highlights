@@ -24,20 +24,53 @@ Clipping = namedtuple('Clipping', ('kind', 'document', 'page', 'location', 'adde
 Vocab = namedtuple('Vocab', ('stem', 'word', 'usage', 'timestamp', 'title', 'authors'))
 
 VALID_WORDS = None
-LOOKUP_TO_HIGHLIGHT_THRESHOLD = 2 * 60 * 1000 # 2 mins in unix timestamp
+# LOOKUP_TO_HIGHLIGHT_THRESHOLD = CONFIG['mins_since_lookup'] * 60 * 1000 # 2 mins in unix timestamp
+
+MECABHITS = 0
+
+#DEBUG vars
 # Doesn't update timestamp. Turns off loading indicators to make it easier to showInfo
 DEBUG = False
-MECABHITS = 0
+currentTime = datetime.now().strftime("%Y-%m-%d_%H%M")
+logName = "kindleAnki" + "_%s.log" % currentTime
+logPath = os.path.normpath(os.path.join(mw.col.media.dir(), "..", logName)) 
+DEBUG_VOCAB = "虎視眈々"
+DETAILED_LOGS = False
+
+def log(logLine):
+    with open(logPath, "a+", encoding="utf-8") as logFile:
+        logFile.write(f'{logLine}\n')
+
+def getVocabTimestamp(timestamp):
+    return datetime.fromtimestamp(timestamp/1000).strftime('%Y-%m-%d %H:%M:%S')
+
+def vocabDebug(state, vocabs, clipping=None, vocab=None):
+    if not DEBUG:
+        return
+    
+    # clipping_in_vocabs = False
+    debug_in_vocabs = len([v for v in vocabs if DEBUG_VOCAB in v.usage])
+    if clipping:
+        added = parse_clipping_added(clipping.added)
+    lastVocabTimestamp = getVocabTimestamp(vocabs[0].timestamp)
+    if state == 'before':
+        log(f'bfore slice: {len(vocabs)}, debug_in_vocabs: {debug_in_vocabs}, ClippingTimestamp:{added}, last timestamp: {lastVocabTimestamp}')
+    elif state == 'after':
+        vocabTimestamp = None
+        if (vocab):
+            vocabTimestamp = getVocabTimestamp(vocab.timestamp)
+        log(f'after slice: {len(vocabs)}, debug_in_vocabs: {debug_in_vocabs}, ClippingTimestamp:{added}, last timestamp: {lastVocabTimestamp}, VocabTimestamp: {vocabTimestamp}, clipping content: {clipping.content}, title: {clipping.document}, vocab usage: {vocab.usage}')
+        if DETAILED_LOGS:
+            for i, v in enumerate(vocabs):
+                log([f"{i} Vocab Usage: {v.usage} Timestamp: {getVocabTimestamp(v.timestamp)}\n"])
+    elif state == 'notFound':
+        log(f'ntFnd slice: {len(vocabs)}, debug_in_vocabs: {debug_in_vocabs}, ClippingTimestamp:{added}, last timestamp: {lastVocabTimestamp}')
+    else:
+        log(f'---OG slice: {len(vocabs)}, debug_in_vocabs: {debug_in_vocabs}')
 
 
 def getDeck(vocab):
-    # deck = mw.col.decks.byName(CONFIG['deck_name'])    
     return mw.col.decks.id(CONFIG['deck_name'] + '::' + vocab.title)
-    # did = deck['id']
-    # if not did:
-    #     showInfo(CONFIG['deck_name'] + ' was not found. Please check the deck name in the config.')
-    #     return
-    # return did
 
 
 def getClippings(path):
@@ -51,10 +84,6 @@ def getClippings(path):
         else:
             raise RuntimeError(f'Unknown extension in path: {path!r}')
 
-
-    # if bad_clippings:
-    #     showText(
-    #         )
 
     highlight_clippings = list(highlights_only(clippings))
     clippings_to_add = after_last_added(highlight_clippings, last_added_datetime())
@@ -86,7 +115,6 @@ def displayResults(highlight_clippings, clippings_to_add, bad_clippings, clippin
 
 
 def setLastAdded(last_added):
-    # return
     if last_added:
         if not DEBUG:
             CONFIG['last_added'] = parse_clipping_added(last_added).isoformat()
@@ -110,7 +138,6 @@ def hasDuplicateHighlightMatches(clipping, vocabs):
     if clipping.content == '■':
         showInfo( str(dupes))
     if len(dupes) >= 1:
-        # showInfo( str(dupes))
         return dupes[-1]
     return False
 
@@ -156,10 +183,22 @@ def getTimestamp():
         ts = longAgo
     return ts
 
+def convertToVocab(rows):
+    vocabs = []
+    for row in rows:
+        try:
+            vocabs.append()
+        except:
+            pass
+    return vocabs
+
+
 def getVocabLookups():
-    cur = create_connection().cursor()
+    conn = create_connection()
+    # sqlite3.OperationalError: Could not decode to UTF-8 column 'usage' with text; Happens with blob data?
+    conn.text_factory = lambda b: b.decode(errors = 'ignore')
+    cur = conn.cursor()
     timestamp = getTimestamp()
-    # showInfo(str(timestamp))
     sql = f'''
     select WORDS.stem, WORDS.word, LOOKUPS.usage, LOOKUPS.timestamp, BOOK_INFO.title, BOOK_INFO.authors
     from LOOKUPS left join WORDS
@@ -170,36 +209,28 @@ def getVocabLookups():
 	ORDER BY LOOKUPS.timestamp DESC;
     '''
     cur.execute(sql)
-    vocabs = [Vocab(*row) for row in cur.fetchall()]
-    # showInfo(str(len(vocabs)))
-    return vocabs
+    
+    return [Vocab(*row) for row in cur.fetchall()]
 
-def isWithinSameTime(clipping, vocab):
+def getTimestampDistance(clipping, vocab):
     
     clippingTimestamp = parse_clipping_added(clipping.added).timestamp()
-    # if clipping.content == '■':
-    #     showInfo(str(clippingTimestamp)+ ' ' + str(vocab.timestamp))
-    #     showInfo(str(abs(clippingTimestamp - vocab.timestamp/1000)))
-    return abs(clippingTimestamp - vocab.timestamp/1000) <= LOOKUP_TO_HIGHLIGHT_THRESHOLD
+    return clippingTimestamp - vocab.timestamp/1000
+
 
 def getVocab(clipping, vocabs):
-    sameSentence = 0 # This is a lazy hack to get sentences w/ multiple lookups
-    for index, vocab in enumerate(vocabs):
-        # if you looked up other words in the same sentence you might get a false vocab entry            
-        if index >= 1 and vocabs[index - 1].usage == vocab.usage:
-            sameSentence += 1
-        
-        if clipping.content in vocab.usage and isWithinSameTime(clipping, vocab):
-            idx = 0 if (index - sameSentence-2) < 0 else (index - sameSentence-2)
-            return vocab, vocabs[idx:]
-
-    # Double check for loose matches (where word doesn't match highlight eg ころころｖｓコロコロ)
+    foundVocab = None
+    possibleUsages = []
+    distances = []
     for index, vocab in enumerate(vocabs):
         if clipping.content in vocab.usage:
-            # showInfo('2')
-            return vocab, vocabs
-    # showInfo(str(vocabs))
-    return None, vocabs
+            possibleUsages.append(vocab)
+            distances.append(getTimestampDistance(clipping, vocab))
+    if possibleUsages:
+        minIndex = distances.index(min(distances))
+        foundVocab = possibleUsages[minIndex]
+
+    return foundVocab, vocabs
 
 
 def isUnique(newNote, pendingNotes):
@@ -259,6 +290,7 @@ def import_highlights():
     timestamp = None
     no_vocab = []
     vocabs = getVocabLookups()
+    vocabDebug("original", vocabs)
     clippings_to_add.reverse()
     # mw.progress.update(label='Parsing New Highlights...\n ')
     showProgressOrFinish(True, label='Parsing New Highlights...\n ')
@@ -268,15 +300,15 @@ def import_highlights():
         showProgressOrFinish(True, label=f'Parsing New Highlights...\n {clipping.content}', value=i+1)
         note = Note(mw.col, model)
         # showInfo(str(len(vocabs)))
-        
+        vocabDebug("before", vocabs, clipping)
         vocab, vocabs = getVocab(clipping, vocabs)
-        
         if not vocab:
             no_vocab.append(str(clipping))
-
+            vocabDebug("notFound", vocabs, clipping)
             continue            
         # showInfo(clipping.content +' '+ str(vocab))
-        
+        vocabDebug("after", vocabs, clipping, vocab)
+
         note.fields = list(fields(clipping, model, vocab))
         note.addTag(vocab.authors)
         note.addTag(vocab.title)
